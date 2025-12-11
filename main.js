@@ -1,19 +1,10 @@
 // main.js
 import { generateEmployee } from "./src/employee.js";
 
-// Konstanty
 const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
 
 /**
- * Vygeneruje pole zaměstnanců (původní main z úkolu 3),
- * jen přejmenované na generateEmployeeData(dtoIn).
- *
- * @param {object} dtoIn
- * @param {number} dtoIn.count
- * @param {object} dtoIn.age
- * @param {number} dtoIn.age.min
- * @param {number} dtoIn.age.max
- * @returns {Array<object>} employees
+ * Původní main z úkolu 3 – teď jako generateEmployeeData(dtoIn).
  */
 export function generateEmployeeData(dtoIn) {
   const { count, age } = dtoIn;
@@ -40,11 +31,7 @@ export function generateEmployeeData(dtoIn) {
 }
 
 /**
- * Pomocná funkce – spočítá věk v letech jako desetinné číslo.
- * Používá 365.25 dne v roce, stejně jako generování data narození.
- *
- * @param {string} birthdateIso - ISO string (např. "1990-01-01T00:00:00.000Z")
- * @returns {number} age in years (float)
+ * Výpočet věku v letech jako desetinné číslo.
  */
 function computeAge(birthdateIso) {
   const now = Date.now();
@@ -53,10 +40,7 @@ function computeAge(birthdateIso) {
 }
 
 /**
- * Medián z pole čísel (pole nesmí být prázdné).
- *
- * @param {number[]} values
- * @returns {number} median
+ * Medián z pole čísel.
  */
 function computeMedian(values) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -64,34 +48,25 @@ function computeMedian(values) {
   const mid = Math.floor(n / 2);
 
   if (n % 2 === 1) {
-    // lichý počet – prostřední hodnota
     return sorted[mid];
   } else {
-    // sudý počet – průměr dvou prostředních
     return (sorted[mid - 1] + sorted[mid]) / 2;
   }
 }
 
 /**
  * Zaokrouhlení na jedno desetinné místo.
- *
- * @param {number} value
- * @returns {number}
  */
 function roundToOneDecimal(value) {
   return Math.round(value * 10) / 10;
 }
 
 /**
- * Spočítá statistiky zaměstnanců podle zadání.
- *
- * @param {Array<object>} employees
- * @returns {object} dtoOut
+ * Výpočet statistik podle zadání.
  */
 export function getEmployeeStatistics(employees) {
   const total = employees.length;
 
-  // Pracovní úvazky
   let workload10 = 0;
   let workload20 = 0;
   let workload30 = 0;
@@ -104,42 +79,40 @@ export function getEmployeeStatistics(employees) {
   for (const emp of employees) {
     const { workload, gender, birthdate } = emp;
 
-    // Počítání workloadů
     if (workload === 10) workload10++;
     else if (workload === 20) workload20++;
     else if (workload === 30) workload30++;
     else if (workload === 40) workload40++;
 
-    // věk
-    const age = computeAge(birthdate);
+    const age = computeAge(birthdate); // desetinný věk
     ages.push(age);
 
-    // workload do pole
     workloads.push(workload);
 
-    // ženy – workload
     if (gender === "female") {
       womenWorkloads.push(workload);
     }
   }
 
-  // AGERELATED – pracujeme s desetinným věkem, zaokrouhlujeme až na konci
+  // MIN / MAX věk – testy chtějí zaokrouhlit DOLŮ (Math.floor), ne Math.round
   const agesSorted = [...ages].sort((a, b) => a - b);
-  const minAge = Math.round(agesSorted[0]);
-  const maxAge = Math.round(agesSorted[agesSorted.length - 1]);
+  const minAge = Math.floor(agesSorted[0]);
+  const maxAge = Math.floor(agesSorted[agesSorted.length - 1]);
 
+  // Průměrný věk – pořád pracujeme s desetinným věkem a až na konci na 1 desetinné místo
   const sumAges = ages.reduce((acc, val) => acc + val, 0);
   const averageAge = roundToOneDecimal(sumAges / total);
 
+  // Medián věku – opět nejdřív medián z desetinných věků, ale zaokrouhlení dolů
   const medianAgeRaw = computeMedian(ages);
-  const medianAge = Math.round(medianAgeRaw); // podle zadání celé číslo
+  const medianAge = Math.floor(medianAgeRaw);
 
-  // Workload – medián (číslo, zaokrouhlené na celé číslo)
+  // Workload – medián
   const workloadsSorted = [...workloads].sort((a, b) => a - b);
   const medianWorkloadRaw = computeMedian(workloadsSorted);
-  const medianWorkload = Math.round(medianWorkloadRaw);
+  const medianWorkload = Math.round(medianWorkloadRaw); // celé číslo
 
-  // Průměrná výše úvazku žen
+  // Průměrný workload žen
   let averageWomenWorkload = null;
   if (womenWorkloads.length > 0) {
     const sumWomenWorkloads = womenWorkloads.reduce(
@@ -147,44 +120,34 @@ export function getEmployeeStatistics(employees) {
       0
     );
     const avgWomen = sumWomenWorkloads / womenWorkloads.length;
-    // dovoleno celé číslo i 1 desetinné místo – zvolíme 1 desetinné místo
     averageWomenWorkload = roundToOneDecimal(avgWomen);
   }
 
-  // Seznam zaměstnanců setříděný dle úvazku od nejmenšího po největší
+  // Seřazení zaměstnanců dle workloadu (numericky!)
   const sortedByWorkload = [...employees].sort(
     (a, b) => a.workload - b.workload
   );
 
-  const dtoOut = {
+  return {
     total,
     workload10,
     workload20,
     workload30,
     workload40,
-    averageAge,          // 1 desetinné místo
-    minAge,              // celé číslo
-    maxAge,              // celé číslo
-    medianAge,           // celé číslo
-    medianWorkload,      // celé číslo
-    averageWomenWorkload, // null pokud nejsou žádné ženy / jinak 1 desetinné místo
+    averageAge,           // 1 desetinné místo
+    minAge,               // celé číslo, floor
+    maxAge,               // celé číslo, floor
+    medianAge,            // celé číslo, floor(mediánu)
+    medianWorkload,       // celé číslo
+    averageWomenWorkload, // 1 desetinné místo nebo celé číslo
     sortedByWorkload,
   };
-
-  return dtoOut;
 }
 
 /**
- * Hlavní funkce – podle zadání:
- * 1) zavolá generateEmployeeData(dtoIn) – vygeneruje seznam zaměstnanců
- * 2) zavolá getEmployeeStatistics(employees) – spočítá statistiky
- * 3) vrátí dtoOut ve správné struktuře
- *
- * @param {object} dtoIn
- * @returns {object} dtoOut
+ * Hlavní funkce podle zadání.
  */
 export function main(dtoIn) {
   const employees = generateEmployeeData(dtoIn);
-  const dtoOut = getEmployeeStatistics(employees);
-  return dtoOut;
+  return getEmployeeStatistics(employees);
 }
